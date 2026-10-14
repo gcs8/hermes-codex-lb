@@ -1,0 +1,8 @@
+{
+  "name": "codex-lb",
+  "label": "Codex-LB",
+  "description": "codex-lb pool usage, served tier and reset credits.",
+  "version": "0.1.0",
+  "tab": { "path": "/codex-lb", "hidden": true },
+  "api": "plugin_api.py"
+}

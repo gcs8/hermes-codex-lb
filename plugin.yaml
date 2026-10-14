@@ -1,0 +1,36 @@
+name: codex-lb
+version: 0.1.0
+manifest_version: 2
+api_version: 1
+description: "codex-lb gateway in Hermes: per-session fast tier (/lbfast), requested vs served tier tracking, pool usage and banked reset credits in the desktop app."
+author: gcs8
+license: MIT
+homepage: https://github.com/gcs8/hermes-codex-lb
+tags: [codex-lb, codex, openai, gateway, usage]
+requires_hermes: ">=0.22.0"
+provides_tools: []
+provides_hooks: []
+provides_middleware: [llm_request, llm_execution]
+config_schema:
+  base_urls:
+    type: list
+    default: []
+    label: "codex-lb base URLs"
+    description: "The /v1 URLs of your codex-lb gateway, exactly as your Hermes provider uses them (e.g. http://codex-lb.local:2455/v1). Only requests to these URLs are touched."
+  default_fast:
+    type: str
+    choices: ["off", "on", "auto"]
+    default: "off"
+    label: "Default fast mode"
+    description: "Fast mode for sessions that haven't used /lbfast. Priority tier uses more subscription quota."
+  mode:
+    type: str
+    choices: [read_only, read_write]
+    default: read_only
+    label: "Access mode"
+    description: "read_write allows redeeming banked reset credits from the desktop page, after a confirmation. codex-lb itself doesn't yet stop a usage key from redeeming (gcs8/codex-lb#2)."
+  api_key:
+    type: secret
+    env: CODEX_LB_PLUGIN_API_KEY
+    label: "codex-lb API key"
+    description: "A codex-lb proxy API key for usage and reset-credit reads. Give it a dedicated key; it doesn't need inference access."
