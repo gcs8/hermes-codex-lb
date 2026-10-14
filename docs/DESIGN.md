@@ -21,8 +21,8 @@ All of these are documented plugin APIs. No core patching (catalog rule 9).
 | Need | Surface | Notes |
 |---|---|---|
 | Add `service_tier: priority` to codex-lb requests | `ctx.register_middleware("llm_request", ...)` | Receives `request`, `provider`, `base_url`, `session_id`; returns `{"request": {...}}`. Only touches requests whose `base_url` matches a configured codex-lb URL. |
-| Read the tier the response was served at | `ctx.register_middleware("llm_execution", ...)` | Wraps the provider call; reads `service_tier` off the returned response. The `post_api_request` hook payload doesn't carry the served tier (raw usage is stripped), so the execution wrapper is the public way to see it. |
-| Per-session switch | `ctx.register_command("lbfast", ...)` | `/lbfast on|off|auto|status`. State kept per session id in plugin storage. |
+| Read the tier the response was served at | `ctx.register_middleware("llm_execution", ...)` | Wraps the provider call; reads `service_tier` off the returned response. The `post_api_request` hook payload doesn't carry the served tier (raw usage is stripped), so the execution wrapper is the public way to see it. Verified on v0.22.0: docs/probes/. |
+| Per-session switch | `ctx.register_command("lbfast", ...)` | `/lbfast on|off|auto|status`. Under turn isolation the command runs in the parent process and requests run in the compute-host child, so state lives in `plugin_db("codex-lb")` (SQLite) keyed by `HERMES_SESSION_ID`, never in memory. |
 | Usage numbers | codex-lb `GET /v1/usage` with a proxy API key | Totals, credit limits, primary/secondary pool windows. |
 | Per-account / error detail | codex-lb `GET /v1/lb/summary` | Doesn't exist yet: gcs8/codex-lb#1 (read-only, key-scoped, off by default). |
 | Desktop UI | `desktop/plugin.js` via `@hermes/plugin-sdk` | Status-bar chip (pool %, fast on/off, last served tier) and a pane. Data comes from the plugin's Python backend (`ctx.rest`), so the API key never reaches the renderer. |
