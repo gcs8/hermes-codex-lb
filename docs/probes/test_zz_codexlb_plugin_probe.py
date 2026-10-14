@@ -44,7 +44,7 @@ def register(ctx):
         result = next_call(request)
         _w({{"ev": "exec", "pid": os.getpid(), "child": os.environ.get("HERMES_COMPUTE_HOST_CHILD"),
             "tier_req": (request or {{}}).get("service_tier"), "result_type": type(result).__name__,
-            "served": getattr(result, "service_tier", None)}})
+            "served": getattr(result, "service_tier", None), "session_id": kw.get("session_id")}})
         return result
 
     def lbprobe(arg):

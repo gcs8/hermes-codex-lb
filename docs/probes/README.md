@@ -41,12 +41,12 @@ All 4 cases passed. Requests stayed valid against the SDK schema.
    invisible to the middleware. Per-session fast state must live in shared storage:
    `plugins.plugin_storage.plugin_db("codex-lb")` (SQLite, WAL) under the profile's
    `plugin-data/` dir, read by the middleware on each request.
-4. **Session id differs by hook.** `llm_request` gets `session_id` in its context;
-   `llm_execution` didn't (it got `None`). Slash commands read it from
-   `gateway.session_context.get_session_env("HERMES_SESSION_ID")`. The command's id matched
-   the middleware's id in every run, so that's the join key. The execution wrapper should
-   take the id from the request middleware (e.g. stash it on the request) rather than its
-   own kwargs.
+4. **Session id is consistent.** `llm_request` and `llm_execution` both get `session_id` in their
+   kwargs, and a slash command reads the same id from
+   `gateway.session_context.get_session_env("HERMES_SESSION_ID")`. They matched in every run,
+   including across the parent/child split, so it's the key for per-session state.
+   (A first probe pass read the wrong key and reported `None` for the execution wrapper; the
+   rerun that reads `kw["session_id"]` is what `results-v0.22.0.jsonl` holds.)
 5. `provider` differs by path (`custom` in-process, the provider name in the child), so match
    on `base_url`, not provider name.
 
