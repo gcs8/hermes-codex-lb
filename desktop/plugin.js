@@ -113,6 +113,12 @@ function TierSection({ tiers }) {
               children: `${tiers.downgraded} priority request(s) came back at another tier. Turn fast off with /lbfast off if it isn't being honoured.`
             })
           : null,
+        tiers.priority_unknown
+          ? jsx('p', {
+              className: 'text-xs text-(--ui-text-tertiary)',
+              children: `${tiers.priority_unknown} priority request(s) came back without a served tier.`
+            })
+          : null,
         last
           ? jsx(Row, { label: 'Last request', value: `asked ${last.requested}, served ${last.served}` })
           : null
