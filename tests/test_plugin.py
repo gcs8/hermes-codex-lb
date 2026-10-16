@@ -101,6 +101,16 @@ def test_execution_records_served_tier(plugin):
     assert summary["last"]["served"] == "default"
 
 
+def test_missing_served_tier_is_not_a_downgrade(plugin):
+    req = {**_request(), "service_tier": "priority"}
+    plugin.mod._on_llm_execution(request=req, next_call=lambda r: object(), base_url=BASE, session_id="s1")
+    summary = plugin.core.tier_summary("s1")
+    assert summary["priority_requested"] == 1
+    assert summary["priority_unknown"] == 1
+    assert summary["downgraded"] == 0 and summary["priority_served"] == 0
+    assert summary["last"]["served"] == "unknown"
+
+
 def test_execution_ignores_other_providers(plugin):
     plugin.mod._on_llm_execution(
         request=_request(), next_call=lambda r: object(), base_url="https://x/v1", session_id="s1"

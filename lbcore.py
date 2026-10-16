@@ -24,6 +24,7 @@ SECRET_NAME = "CODEX_LB_PLUGIN_API_KEY"
 FAST_MODES = ("off", "on", "auto")
 AUTO_WINDOW_SECONDS = 60
 PRIORITY = "priority"
+UNKNOWN_TIER = "unknown"
 _HTTP_TIMEOUT = 10.0
 _MAX_BODY = 1 << 20
 
@@ -159,7 +160,7 @@ def record_tier(session_id: str, requested: str | None, served: str | None) -> N
             conn.execute(
                 "INSERT INTO tier_counts(session_id, requested, served, n, last_at) VALUES (?, ?, ?, 1, ?) "
                 "ON CONFLICT(session_id, requested, served) DO UPDATE SET n = n + 1, last_at = excluded.last_at",
-                (session_id or "", requested or "none", served or "unknown", time.time()),
+                (session_id or "", requested or "none", served or UNKNOWN_TIER, time.time()),
             )
     finally:
         conn.close()
@@ -188,11 +189,15 @@ def tier_summary(session_id: str | None = None) -> dict[str, Any]:
     counts = [{"requested": r, "served": s, "n": int(n)} for r, s, n, _ in rows]
     asked = sum(c["n"] for c in counts if c["requested"] == PRIORITY)
     got = sum(c["n"] for c in counts if c["requested"] == PRIORITY and c["served"] == PRIORITY)
+    # A response that carried no tier is not evidence of a downgrade
+    # (gcs8/hermes-codex-lb#12); only a different, known tier is.
+    unknown = sum(c["n"] for c in counts if c["requested"] == PRIORITY and c["served"] == UNKNOWN_TIER)
     return {
         "counts": counts,
         "priority_requested": asked,
         "priority_served": got,
-        "downgraded": asked - got,
+        "priority_unknown": unknown,
+        "downgraded": asked - got - unknown,
         "last": {"requested": last[0], "served": last[1], "at": last[2]} if last else None,
     }
 

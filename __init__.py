@@ -75,8 +75,10 @@ def _status_text(session_id: str) -> str:
             f"priority requested {summary['priority_requested']}x, "
             f"served {summary['priority_served']}x, downgraded {summary['downgraded']}x"
         )
+        if summary["priority_unknown"]:
+            lines.append(f"{summary['priority_unknown']}x without a served tier in the response.")
         if summary["downgraded"] and not summary["priority_served"]:
-            lines.append("codex-lb served every priority request at the default tier.")
+            lines.append("codex-lb served every priority request at another tier.")
     if (last := summary["last"]) is not None:
         lines.append(f"last request: asked {last['requested']}, served {last['served']}")
     if not lbcore.base_urls():
