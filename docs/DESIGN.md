@@ -75,11 +75,13 @@ Rules for write actions:
   that it can't be undone.
 - Every write is logged to the plugin's own storage (time, account alias, result).
 
-**Enforcement caveat.** codex-lb today lets any API key that can read usage also redeem
-reset credits (`validate_usage_api_key` guards both routes). So `read_only` in the plugin is
-a client-side promise only. Real read-only needs a key-level permission in codex-lb:
-gcs8/codex-lb#2. Until that lands, the README tells users to give the plugin a key
-restricted to the accounts they're willing to have redeemed.
+**Enforcement.** Upstream codex-lb lets any API key that can read usage also redeem
+reset credits (`validate_usage_api_key` guards both routes), so against upstream `read_only`
+in the plugin is a client-side promise only. gcs8/codex-lb added the key-level permission
+(gcs8/codex-lb#2, shipped 2026-10-16 as `allow_reset_credit_redeem`, off by default for new
+keys): there, a key without it gets 403 `reset_credit_redeem_forbidden` on
+`POST /v1/reset-credit`, and `read_write` needs a key with it on. The README says which
+applies to which build.
 
 ## Config
 
