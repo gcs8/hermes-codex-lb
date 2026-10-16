@@ -2,6 +2,10 @@
 
 The desktop half calls these through ``ctx.rest``. The codex-lb API key stays here, in the
 gateway process; the renderer only receives numbers and masked account names.
+
+The routes are plain ``def``: ``lbcore`` talks to codex-lb with blocking ``urllib`` (10 s
+timeout, two calls on a redeem), so FastAPI must run them in its threadpool rather than on
+the event loop the dashboard and gateway share (gcs8/hermes-codex-lb#9).
 """
 
 from __future__ import annotations
@@ -35,7 +39,7 @@ def _fail(exc: Exception) -> HTTPException:
 
 
 @router.get("/status")
-async def status() -> dict:
+def status() -> dict:
     cfg = lbcore.settings()
     return {
         "configured": bool(lbcore.base_urls(cfg)) and bool(lbcore.api_key()),
@@ -46,7 +50,7 @@ async def status() -> dict:
 
 
 @router.get("/usage")
-async def usage() -> dict:
+def usage() -> dict:
     try:
         return lbcore.usage()
     except lbcore.CodexLbError as exc:
@@ -54,7 +58,7 @@ async def usage() -> dict:
 
 
 @router.get("/reset-credits")
-async def reset_credits() -> dict:
+def reset_credits() -> dict:
     try:
         credits = lbcore.reset_credits()
     except lbcore.CodexLbError as exc:
@@ -68,7 +72,7 @@ class RedeemBody(BaseModel):
 
 
 @router.post("/reset-credits/redeem")
-async def redeem(body: RedeemBody) -> dict:
+def redeem(body: RedeemBody) -> dict:
     try:
         return lbcore.redeem(body.account_id, body.redeem_id)
     except lbcore.CodexLbError as exc:
