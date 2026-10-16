@@ -28,7 +28,7 @@ config_schema:
     choices: [read_only, read_write]
     default: read_only
     label: "Access mode"
-    description: "read_write allows redeeming banked reset credits from the desktop page, after a confirmation. codex-lb itself doesn't yet stop a usage key from redeeming (gcs8/codex-lb#2)."
+    description: "read_write allows redeeming banked reset credits from the desktop page, after a confirmation. On gcs8/codex-lb the key also needs 'Allow reset-credit redemption' (off by default for new keys); upstream codex-lb lets any usage key redeem."
   api_key:
     type: secret
     env: CODEX_LB_PLUGIN_API_KEY
