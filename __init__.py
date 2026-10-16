@@ -66,19 +66,24 @@ def _session_id() -> str:
     return get_session_env("HERMES_SESSION_ID") or ""
 
 
+def _tier_word(tier: str) -> str:
+    return "none" if tier == lbcore.UNKNOWN_TIER else tier
+
+
 def _status_text(session_id: str) -> str:
     current = lbcore.get_fast(session_id)
     summary = lbcore.tier_summary(session_id)
     lines = [f"codex-lb fast mode: {current}"]
     if summary["priority_requested"]:
-        lines.append(
-            f"priority requested {summary['priority_requested']}x, "
-            f"served {summary['priority_served']}x, downgraded {summary['downgraded']}x"
-        )
-        if summary["downgraded"] and not summary["priority_served"]:
-            lines.append("codex-lb served every priority request at the default tier.")
+        by_tier = ", ".join(f"{n} {_tier_word(tier)}" for tier, n in summary["priority_reported_by_tier"].items())
+        lines.append(f"reported tier for {summary['priority_requested']} priority request(s): {by_tier}")
+        if summary["priority_reported_other"] or summary["priority_unreported"]:
+            lines.append(
+                "The ChatGPT subscription backend reports default even when fast is applied, "
+                "so this doesn't show whether fast ran."
+            )
     if (last := summary["last"]) is not None:
-        lines.append(f"last request: asked {last['requested']}, served {last['served']}")
+        lines.append(f"last request: asked {last['requested']}, reported {_tier_word(last['served'])}")
     if not lbcore.base_urls():
         lines.append("No codex-lb base URL configured: set base_urls in the plugin's settings.")
     return "\n".join(lines)

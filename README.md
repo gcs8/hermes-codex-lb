@@ -12,11 +12,12 @@ server; not yet run against a live codex-lb.
   current session. Hermes core only sends that tier to first-party OpenAI endpoints
   (NousResearch/hermes-agent#78097), so this is an explicit opt-in for your own gateway.
   `auto` keeps fast on for the first 60 seconds of each user turn.
-- **Requested vs served tier**: every response from codex-lb is checked for the tier it was
-  actually served at. If the gateway quietly answers priority requests at the default tier,
-  `/lbfast status` and the desktop page say so.
+- **Requested vs reported tier**: every response from codex-lb is checked for the tier it
+  reports, and `/lbfast status` and the desktop page show the counts. The ChatGPT
+  subscription backend reports `default` even when a priority request is applied, so a
+  reported `default` is not proof that fast didn't run (gcs8/codex-lb#3).
 - **Codex-LB page in Hermes Desktop** (sidebar entry + status-bar chip): pool remaining for
-  the 5-hour and weekly windows, request/token/cost totals for the plugin's key, served-tier
+  the 5-hour and weekly windows, request/token/cost totals for the plugin's key, reported-tier
   counts, and banked reset credits.
 - **Read-only or read/write**: in `read_write` mode the page can redeem a banked reset credit,
   after a confirmation dialog. It's never available to the model as a tool.
@@ -51,7 +52,7 @@ The same settings live in `config.yaml` under `plugins.entries.codex-lb.settings
 - **Writes upstream:** redeeming a reset credit (`POST /v1/reset-credit`), only in
   `read_write` mode and only after you confirm in the dialog. Redeems are logged locally.
 - **Local storage:** `plugin-data/codex-lb/state.db` in your Hermes profile: per-session fast
-  mode, served-tier counts and the redeem log. No prompts or responses are stored.
+  mode, reported-tier counts and the redeem log. No prompts or responses are stored.
 - **Read-only is client-side today.** codex-lb lets any key that can read usage also redeem
   reset credits. Until codex-lb adds a per-key permission (gcs8/codex-lb#2), use a key whose
   account pool you're comfortable with.

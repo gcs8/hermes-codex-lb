@@ -102,9 +102,12 @@ Hermes's provider `key_cmd`, `.env` or `auth.json`.
 
 - **Billing.** The priority tier costs more quota. The plugin only sends it when
   the user turns it on, and the README says so.
-- **Silent downgrade.** codex-lb 1.25.0-beta.9 serves `priority` requests as
-  `default` (Soju06/codex-lb#1454). The served-tier counter makes that visible
-  instead of letting "fast" look on while nothing changes.
+- **Reported tier is not proof.** The ChatGPT subscription backend reports
+  `service_tier: default` on `priority` requests even when Fast is applied: on
+  2026-10-16, `priority` ran about 32-36% faster than no tier while every
+  response said `default` (gcs8/codex-lb#3, Soju06/codex-lb#1454). The counter
+  shows what responses reported, split into priority / another tier / none, and
+  never calls a reported `default` a downgrade (#17, #12).
 - **Prompt caching.** `service_tier` is a per-request parameter; it doesn't change
   the prompt prefix, so toggling it shouldn't break the cache.
 - **Unattended runs.** No prompts, no blocking calls on the request path. Usage

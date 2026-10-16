@@ -97,8 +97,34 @@ def test_execution_records_served_tier(plugin):
     result = plugin.mod._on_llm_execution(request=req, next_call=lambda r: served, base_url=BASE, session_id="s1")
     assert result is served
     summary = plugin.core.tier_summary("s1")
-    assert summary["priority_requested"] == 1 and summary["priority_served"] == 0 and summary["downgraded"] == 1
+    assert summary["priority_requested"] == 1 and summary["priority_reported"] == 0
+    assert summary["priority_reported_other"] == 1 and summary["priority_unreported"] == 0
+    assert "downgraded" not in summary
     assert summary["last"]["served"] == "default"
+
+
+def test_tier_summary_separates_other_tier_from_missing_tier(plugin):
+    core = plugin.core
+    core.record_tier("s1", "priority", "priority")
+    core.record_tier("s1", "priority", "default")
+    core.record_tier("s1", "priority", "default")
+    core.record_tier("s1", "priority", None)  # response carried no tier
+    core.record_tier("s1", None, "default")  # fast off: not counted
+    summary = core.tier_summary("s1")
+    assert summary["priority_requested"] == 4
+    assert summary["priority_reported"] == 1
+    assert summary["priority_reported_other"] == 2
+    assert summary["priority_unreported"] == 1
+
+
+def test_status_text_does_not_call_reported_default_a_failure(plugin):
+    plugin.core.set_fast("s1", "on")
+    plugin.core.record_tier("s1", "priority", "default")
+    plugin.core.record_tier("s1", "priority", None)
+    text = plugin.mod._status_text("s1")
+    assert "downgraded" not in text and "served every priority request" not in text
+    assert "reported tier for 2 priority request(s): 1 default, 1 none" in text
+    assert "reports default even when fast is applied" in text
 
 
 def test_execution_ignores_other_providers(plugin):
