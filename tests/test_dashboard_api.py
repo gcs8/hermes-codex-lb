@@ -39,7 +39,8 @@ def test_status_and_usage(api):
     core.record_tier("s", "priority", "default")
     status = client.get("/api/plugins/codex-lb/status").json()
     assert status["configured"] is True and status["mode"] == "read_only"
-    assert status["tiers"]["downgraded"] == 1
+    assert status["tiers"]["priority_reported_other"] == 1
+    assert "downgraded" not in status["tiers"]
     assert client.get("/api/plugins/codex-lb/usage").json()["pool_remaining_percent"]["primary"] == 50.0
 
 

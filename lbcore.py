@@ -24,6 +24,7 @@ SECRET_NAME = "CODEX_LB_PLUGIN_API_KEY"
 FAST_MODES = ("off", "on", "auto")
 AUTO_WINDOW_SECONDS = 60
 PRIORITY = "priority"
+UNKNOWN_TIER = "unknown"  # what record_tier stores when the response carried no service_tier
 _HTTP_TIMEOUT = 10.0
 _MAX_BODY = 1 << 20
 
@@ -159,14 +160,18 @@ def record_tier(session_id: str, requested: str | None, served: str | None) -> N
             conn.execute(
                 "INSERT INTO tier_counts(session_id, requested, served, n, last_at) VALUES (?, ?, ?, 1, ?) "
                 "ON CONFLICT(session_id, requested, served) DO UPDATE SET n = n + 1, last_at = excluded.last_at",
-                (session_id or "", requested or "none", served or "unknown", time.time()),
+                (session_id or "", requested or "none", served or UNKNOWN_TIER, time.time()),
             )
     finally:
         conn.close()
 
 
 def tier_summary(session_id: str | None = None) -> dict[str, Any]:
-    """Counts by (requested, served); per session when ``session_id`` is given, else totals."""
+    """Counts by (requested, served); per session when ``session_id`` is given, else totals.
+
+    ``served`` is the tier the response *reported*, not proof of what ran: the ChatGPT subscription
+    backend reports ``default`` even when a ``priority`` request is applied (gcs8/codex-lb#3, #17).
+    Priority requests are split by what was reported: ``priority``, another tier, or no tier (#12)."""
     conn = _db()
     try:
         if session_id:
@@ -186,13 +191,18 @@ def tier_summary(session_id: str | None = None) -> dict[str, Any]:
     finally:
         conn.close()
     counts = [{"requested": r, "served": s, "n": int(n)} for r, s, n, _ in rows]
-    asked = sum(c["n"] for c in counts if c["requested"] == PRIORITY)
-    got = sum(c["n"] for c in counts if c["requested"] == PRIORITY and c["served"] == PRIORITY)
+    asked = [c for c in counts if c["requested"] == PRIORITY]
+    reported = sum(c["n"] for c in asked if c["served"] == PRIORITY)
+    unreported = sum(c["n"] for c in asked if c["served"] == UNKNOWN_TIER)
     return {
         "counts": counts,
-        "priority_requested": asked,
-        "priority_served": got,
-        "downgraded": asked - got,
+        "priority_requested": sum(c["n"] for c in asked),
+        "priority_reported": reported,
+        "priority_reported_other": sum(c["n"] for c in asked) - reported - unreported,
+        "priority_unreported": unreported,
+        "priority_reported_by_tier": {
+            s: sum(c["n"] for c in asked if c["served"] == s) for s in sorted({c["served"] for c in asked})
+        },
         "last": {"requested": last[0], "served": last[1], "at": last[2]} if last else None,
     }
 

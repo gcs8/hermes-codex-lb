@@ -103,5 +103,5 @@ def test_lbfast_controls_wire_tier_and_records_served(tmp_path, isolation):
     assert not [e for _, e in invalid if "service_tier" in e], invalid
     assert "on for this session" in json.dumps(on), (on, tail)
     assert tiers == [None, "priority", None], (tiers, tail)
-    assert "downgraded 1x" in json.dumps(status), status
+    assert "reported tier for 1 priority request(s): 1 default" in json.dumps(status), status
     assert ("priority", "default", 1) in _tier_rows(h), _tier_rows(h)

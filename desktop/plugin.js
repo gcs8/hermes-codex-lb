@@ -97,24 +97,27 @@ function TierSection({ tiers }) {
   if (!tiers) return null
   const last = tiers.last
   return jsx(Section, {
-    title: 'Fast tier (requested vs served)',
+    title: 'Fast tier (requested vs reported)',
     children: jsxs('div', {
       className: 'flex flex-col gap-1.5',
       children: [
         jsx(Row, { label: 'Priority requested', value: num(tiers.priority_requested) }),
         jsx(Row, {
-          label: 'Priority served',
-          value: num(tiers.priority_served),
-          tone: tiers.priority_requested ? (tiers.downgraded ? 'warn' : 'good') : 'muted'
+          label: 'Reported priority',
+          value: num(tiers.priority_reported),
+          tone: tiers.priority_reported ? 'good' : 'muted'
         }),
-        tiers.downgraded
+        tiers.priority_reported_other || tiers.priority_unreported
           ? jsx('p', {
               className: 'text-xs text-(--ui-text-tertiary)',
-              children: `${tiers.downgraded} priority request(s) came back at another tier. Turn fast off with /lbfast off if it isn't being honoured.`
+              children: `${num(tiers.priority_reported_other)} reported another tier, ${num(tiers.priority_unreported)} reported none. The ChatGPT subscription backend reports default even when fast is applied, so this doesn't show whether fast ran.`
             })
           : null,
         last
-          ? jsx(Row, { label: 'Last request', value: `asked ${last.requested}, served ${last.served}` })
+          ? jsx(Row, {
+              label: 'Last request',
+              value: `asked ${last.requested}, reported ${last.served === 'unknown' ? 'none' : last.served}`
+            })
           : null
       ]
     })
@@ -240,7 +243,7 @@ function CodexLbChip() {
   const label = `5h ${pct(primary)} · wk ${pct(usage.data?.pool_remaining_percent?.secondary)}`
   return jsx(Tip, {
     label: tiers.priority_requested
-      ? `codex-lb pool remaining · priority served ${tiers.priority_served}/${tiers.priority_requested}`
+      ? `codex-lb pool remaining · fast requested ${tiers.priority_requested}x`
       : 'codex-lb pool remaining',
     children: jsxs('button', {
       type: 'button',
