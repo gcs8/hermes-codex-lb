@@ -41,6 +41,13 @@ Then in Hermes Desktop, **Settings → Plugins → codex-lb**:
 Give the plugin its own codex-lb key. It only needs `GET /v1/usage` and `/v1/reset-credit`,
 so you can lock its allowed models to a name that doesn't exist and it can't run inference.
 
+On [gcs8/codex-lb](https://github.com/gcs8/codex-lb) (fork builds from 2026-10-16 on) a key
+also carries **Allow reset-credit redemption**. Leave it off for `read_only` (the default for
+new keys) and codex-lb refuses redeems from the key with 403, whatever the plugin is set to.
+Turn it on for `read_write`, otherwise the Redeem button always fails. Keys created before
+that build were backfilled with the permission on; check them. Upstream Soju06/codex-lb has
+no such permission yet.
+
 The same settings live in `config.yaml` under `plugins.entries.codex-lb.settings`.
 
 ## What it does on your machine (disclosure)
@@ -53,9 +60,10 @@ The same settings live in `config.yaml` under `plugins.entries.codex-lb.settings
   `read_write` mode and only after you confirm in the dialog. Redeems are logged locally.
 - **Local storage:** `plugin-data/codex-lb/state.db` in your Hermes profile: per-session fast
   mode, reported-tier counts and the redeem log. No prompts or responses are stored.
-- **Read-only is client-side today.** codex-lb lets any key that can read usage also redeem
-  reset credits. Until codex-lb adds a per-key permission (gcs8/codex-lb#2), use a key whose
-  account pool you're comfortable with.
+- **Read-only is enforced by codex-lb only on gcs8/codex-lb.** There, a key without
+  "Allow reset-credit redemption" cannot redeem (gcs8/codex-lb#2 shipped 2026-10-16).
+  Upstream codex-lb lets any key that can read usage also redeem, so against upstream use a
+  key whose account pool you're comfortable with.
 - No telemetry, no shell commands, no background processes. The desktop page polls the
   plugin's own backend once a minute while it's open.
 
