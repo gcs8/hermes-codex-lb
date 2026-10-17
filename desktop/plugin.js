@@ -60,6 +60,10 @@ function Row({ label, value, tone }) {
   })
 }
 
+// Weekly-only pools (Pro, Pro Lite) report no 5-hour window: codex-lb sends
+// primary: null and hides its own 5 h donut (gcs8/hermes-codex-lb#10).
+const hasPrimary = usage => typeof usage?.pool_remaining_percent?.primary === 'number'
+
 function PoolSection({ usage }) {
   const pool = usage?.pool_remaining_percent || {}
   return jsx(Section, {
@@ -67,7 +71,9 @@ function PoolSection({ usage }) {
     children: jsxs('div', {
       className: 'flex flex-col gap-1.5',
       children: [
-        jsx(Row, { label: '5-hour window', value: pct(pool.primary), tone: toneForRemaining(pool.primary) }),
+        usage && !hasPrimary(usage)
+          ? jsx('p', { className: 'text-xs text-(--ui-text-tertiary)', children: 'No 5-hour window in this pool.' })
+          : jsx(Row, { label: '5-hour window', value: pct(pool.primary), tone: toneForRemaining(pool.primary) }),
         jsx(Row, { label: 'Weekly window', value: pct(pool.secondary), tone: toneForRemaining(pool.secondary) })
       ]
     })
@@ -75,6 +81,8 @@ function PoolSection({ usage }) {
 }
 
 function TotalsSection({ usage }) {
+  // cached_input_tokens over all tokens (input and output): a rough share, not the
+  // cache hit ratio codex-lb reports (cached over input), which needs /v1/lb/summary.
   const cached = usage?.total_tokens ? (usage.cached_input_tokens / usage.total_tokens) * 100 : null
   return jsx(Section, {
     title: 'Totals (this API key)',
@@ -83,7 +91,7 @@ function TotalsSection({ usage }) {
       children: [
         jsx(Row, { label: 'Requests', value: num(usage?.requests) }),
         jsx(Row, { label: 'Tokens', value: num(usage?.total_tokens) }),
-        jsx(Row, { label: 'Cached share of tokens', value: pct(cached) }),
+        jsx(Row, { label: 'Cached input / all tokens', value: pct(cached) }),
         jsx(Row, {
           label: 'Estimated API-price cost',
           value: typeof usage?.cost_usd === 'number' ? `$${usage.cost_usd.toFixed(2)}` : '–'
@@ -188,6 +196,15 @@ function CodexLbPage() {
   const usage = useUsage(Boolean(status.data?.configured))
 
   if (status.isLoading) return jsx('div', { className: 'p-6 text-sm text-(--ui-text-tertiary)', children: 'Loading…' })
+  if (status.isError) {
+    return jsx('div', {
+      className: 'p-6',
+      children: jsx(EmptyState, {
+        title: 'codex-lb plugin backend unavailable',
+        description: String(status.error?.message || status.error)
+      })
+    })
+  }
   if (!status.data?.configured) {
     return jsx('div', {
       className: 'p-6',
@@ -239,8 +256,12 @@ function CodexLbChip() {
   const usage = useUsage(Boolean(status.data?.configured))
   if (!status.data?.configured) return null
   const primary = usage.data?.pool_remaining_percent?.primary
+  const secondary = usage.data?.pool_remaining_percent?.secondary
   const tiers = status.data.tiers || {}
-  const label = `5h ${pct(primary)} · wk ${pct(usage.data?.pool_remaining_percent?.secondary)}`
+  // Weekly-only pools have no 5 h figure: show the weekly one and colour the dot by it.
+  const weeklyOnly = usage.data && !hasPrimary(usage.data)
+  const label = weeklyOnly ? `wk ${pct(secondary)}` : `5h ${pct(primary)} · wk ${pct(secondary)}`
+  const tone = toneForRemaining(weeklyOnly ? secondary : primary)
   return jsx(Tip, {
     label: tiers.priority_requested
       ? `codex-lb pool remaining · fast requested ${tiers.priority_requested}x`
@@ -249,7 +270,7 @@ function CodexLbChip() {
       type: 'button',
       className: 'inline-flex h-full items-center gap-1.5 px-1.5 text-[0.6875rem] text-(--ui-text-tertiary) hover:bg-(--chrome-action-hover) hover:text-foreground',
       onClick: () => host.navigate(PATH),
-      children: [jsx(StatusDot, { tone: toneForRemaining(primary) }), label]
+      children: [jsx(StatusDot, { tone }), label]
     })
   })
 }
