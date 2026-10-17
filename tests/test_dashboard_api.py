@@ -2,10 +2,13 @@
 
 from __future__ import annotations
 
+import asyncio
 import importlib.util
 import os
+import threading
 from pathlib import Path
 
+import httpx
 import pytest
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
@@ -67,3 +70,34 @@ def test_upstream_error_maps_to_502(api, monkeypatch):
     monkeypatch.setattr(core, "usage", boom)
     resp = client.get("/api/plugins/codex-lb/usage")
     assert resp.status_code == 502 and "unreachable" in resp.json()["detail"]
+
+
+@pytest.mark.parametrize(
+    ("method", "path", "operation", "result"),
+    [
+        ("GET", "/status", "settings", {"base_urls": ["http://lb.test/v1"]}),
+        ("GET", "/usage", "usage", {"requests": 1}),
+        ("GET", "/reset-credits", "reset_credits", []),
+        ("POST", "/reset-credits/redeem", "redeem", {"account": "test"}),
+    ],
+)
+def test_blocking_operations_run_outside_the_asgi_event_loop(api, monkeypatch, method, path, operation, result):
+    """Exercise FastAPI dispatch, not handler syntax. Regression for #9 / PR13."""
+    client, core, _ = api
+    operation_threads = []
+
+    def blocking_operation(*args):
+        operation_threads.append(threading.get_ident())
+        return result
+
+    monkeypatch.setattr(core, operation, blocking_operation)
+
+    async def request_on_loop():
+        loop_thread = threading.get_ident()
+        async with httpx.AsyncClient(transport=httpx.ASGITransport(app=client.app), base_url="http://test") as ac:
+            body = {"account_id": "a", "redeem_id": "r"} if method == "POST" else None
+            response = await ac.request(method, "/api/plugins/codex-lb" + path, json=body)
+        assert response.status_code == 200, response.text
+        assert operation_threads and all(t != loop_thread for t in operation_threads)
+
+    asyncio.run(request_on_loop())

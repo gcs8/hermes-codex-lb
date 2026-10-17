@@ -89,6 +89,20 @@ hermes plugins validate .                             # catalog admission checks
 (`python -m pm.build_env --source . --out .venv --group dev --group test`).
 Design notes: [docs/DESIGN.md](docs/DESIGN.md). Hook verification: [docs/probes/](docs/probes/).
 
+`tests/run.sh` also requires Node.js 22 or newer and runs the desktop component tests.
+They load the complete uncompiled module with synthetic SDK and React hook doubles,
+covering weekly-only pools, zero remaining capacity, backend errors, cached-token labels
+and reported-tier wording. These tests do not exercise real React rendering, CSS,
+React Query scheduling or a live Hermes Desktop. Catalog screenshots and live acceptance
+remain separate checks. To run just that synthetic component suite:
+
+```bash
+node --experimental-vm-modules --test tests/desktop/test_plugin.mjs
+```
+
+The unit runner keeps its HOME, TMPDIR and Hermes runtime directory inside its disposable
+scratch copy. Set TMPDIR before invoking it to choose the scratch parent.
+
 ## License
 
 MIT
